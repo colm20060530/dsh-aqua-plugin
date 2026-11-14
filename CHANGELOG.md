@@ -1,25 +1,12 @@
 # Changelog
 
-## 1.4.0 — dsh 0.2.2-rc.1 port
+## 1.4.0
 
-- **Compatibility**: `@deepseek-ai/dsh-client-store` instead of the removed
-  `dsh-client-runtime/client`, icon-name fallback, guarded `settings.plugin.item`,
-  `engines.dsh` so the loader's compatibility gate accepts the row.
-- **Master switch**: a `settings.general.item` row above 外观, plus `Ctrl+Alt+A`.
-  Both drive the plugin's durable `dsh.ui-aqua.enabled` flag.
-- **Video wallpaper**: the host half streams a local file over
-  `/aqua/wallpaper.mp4` (byte ranges, HEAD, 404 reporting); the client half
-  defaults to it and detects video URLs.
-- **Global glass**: harness-desktop's `aqua-overrides.css` is inlined and
-  injected as a plugin stylesheet; adds the desktop-shell fix that makes the
-  opaque `[data-windows-titlebar] .centerCol` translucent.
-- **Settings migration**: one-time reset (`dsh.ui-aqua.schema = 2`) so earlier
-  defaults do not survive an upgrade.
-- **Performance**: fluid canvas capped at 1× DPR and skipped while `display:none`
-  (the wallpaper mode case), every loop idles while the window is hidden, the
-  wallpaper video preloads metadata only and pauses in the background.
+首个发布版本。
 
-## 1.3.0 — upstream baseline
-
-Unmodified Aqua 1.3.0 bundle from WYH66666666/DSH-Transparent-UI-Plugin, plus
-harness-desktop's tuned defaults.
+- 玻璃拟态皮肤：云母布局 / 兼容模式两套排版，玻璃模糊与磨砂可调。
+- 总开关：设置 → 通用设置 → 玻璃主题，或 `Ctrl + Alt + A`；关闭时卸载全部玻璃层。
+- 背景：流体着色器、静态图片、本地视频三种；视频由宿主端以 `/aqua/wallpaper.mp4`（支持 Range）流式提供，片源在 `cordis.patch.yml` 的 `config.video` 指定。
+- 全局覆盖层：聊天列、设置面板、下拉框、代码块、轨迹表格、事件详情侧栏等区域统一玻璃化，并跟随明暗主题；桌面壳把聊天列刷成不透明的问题已处理。
+- 设置面板：开关、模式、模糊、磨砂、背景、壁纸、蒙层、视频亮度等旋钮集中在「通用设置」里，即改即生效。
+- 性能：壁纸模式下跳过被 `display:none` 的着色器；着色器后备缓冲上限 1× DPR；动画循环在窗口隐藏时空转；壁纸视频仅预加载元数据并在后台暂停；视频加载失败自动回落到静态壁纸。

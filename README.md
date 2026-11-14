@@ -1,115 +1,102 @@
-# Aqua — glassmorphism skin for DeepSeek Harness (dsh 0.2.x)
+# Aqua · DeepSeek Harness 玻璃拟态主题
 
-A port of the **Aqua** transparent/glass theme to the current DeepSeek Harness
-runtime (0.2.2-rc.1), with the "global glass" layer folded into the plugin, a
-working master switch, a local **video wallpaper** served by the plugin itself,
-and the animation loops tuned for low CPU.
+给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 Web/桌面端加一层玻璃拟态皮肤：悬浮玻璃卡片、可换的壁纸/流体背景、统一的圆角与动效，外加一个总开关。
 
-![Main interface](docs/screenshots/main-interface.png)
-![Settings](docs/screenshots/settings.png)
+![主界面](docs/screenshots/main-interface.png)
 
-Upstream work this builds on:
+![设置](docs/screenshots/settings.png)
 
-| Project | What it contributed |
-| --- | --- |
-| [WYH66666666/DSH-Transparent-UI-Plugin](https://github.com/WYH66666666/DSH-Transparent-UI-Plugin) | the original Aqua skin, its bundle layout and settings rows |
-| [colm20060530/harness-desktop](https://github.com/colm20060530/harness-desktop) | the "global glass" override sheet, tuned defaults, the `key:` slot fix |
+## 特性
 
-This fork exists because the upstream 1.3.0 bundle targets dsh 0.1.x / rc.6 and
-does not run on 0.2.x as shipped.
+- **云母布局**：侧栏、顶栏、输入区、消息气泡、轨迹面板统一改成半透明玻璃卡片；切「兼容模式」则保留官方排版，只换材质。
+- **背景可换**：流体渐变（WebGL）/ 静态图片 / 本地视频，视频由插件自己从磁盘流式提供，不经过第三方服务。
+- **总开关**：设置 → 通用设置 → 玻璃主题，或任意位置 `Ctrl + Alt + A`。关掉即卸载全部玻璃层，不是只调透明度。
+- **全局覆盖**：官方界面里原本不透明的区域（聊天列、设置面板、下拉框、代码块、轨迹表格……）都有对应的玻璃规则，并跟随主题明暗。
+- **低开销**：壁纸模式下不再计算被隐藏的着色器；动画循环在窗口隐藏时空转；壁纸视频只在可见时解码。
 
-> Repo: <https://github.com/colm20060530/dsh-aqua-plugin> · built for the desktop app in
-> <https://github.com/colm20060530/harness-desktop>.
+## 安装
 
-## What this fork changes
+需要一份带 desktop profile 的 dsh 安装（`~/.dsh/profiles/desktop`）。
 
-**Compatibility with dsh 0.2.x**
+```powershell
+git clone https://github.com/colm20060530/dsh-aqua-plugin
+cd dsh-aqua-plugin
+pwsh -File scripts/install.ps1                          # 用插件自带的静态壁纸
+pwsh -File scripts/install.ps1 -Video 'D:/bg.mp4'       # 用自己的视频当壁纸
+```
 
-| Upstream | 0.2.x reality | Fix |
-| --- | --- | --- |
-| `require("@deepseek-ai/dsh-client-runtime/client")` | package is gone; the store lives in the browser seed `@deepseek-ai/dsh-client-store` | require the seed module |
-| `IconCheckOutline16` | icon set renamed | `IconCheckOutline*` fallback chain |
-| registers a `settings.plugin.item` card | that slot no longer exists | guarded registration |
-| `peerDependencies ^0.1.0-rc.5` | compat gate silently disables the row | `engines.dsh: ^0.2.2-rc.1` |
+脚本会做四件事，每一步都会留 `.bak-before-aqua-<时间戳>` 备份：
 
-**One master switch.** Settings → 通用设置 → the row above 外观 toggles the whole
-skin, and `Ctrl+Alt+A` does the same from anywhere. The flag is the plugin's own
-`localStorage["dsh.ui-aqua.enabled"]`.
+1. 把包放进 `~/.dsh/plugins/@deepseek-ai/dsh-client-ui-aqua`
+2. 在 profile 的 `node_modules` 里建 junction
+3. 把依赖写进 profile 的 `package.json`（避免后续 pnpm 操作把它清掉）
+4. 在 profile 的 `cordis.patch.yml` 写入 `ui-aqua` 行
 
-**Local video wallpaper.** The host half (`lib/index.js`, an otherwise empty
-`apply`) registers `/aqua/wallpaper.mp4` and streams a file from disk with byte
-ranges; the browser half points its default wallpaper at that route. Point it
-elsewhere through the loader row:
+装完重启一次 DeepSeek Harness（渲染端只在启动时加载 bundle）。卸载：
+
+```powershell
+pwsh -File scripts/install.ps1 -Uninstall
+```
+
+手动安装就是把包放到 profile 的 `node_modules/@deepseek-ai/dsh-client-ui-aqua`，再在 `cordis.patch.yml` 加：
 
 ```yaml
 - insert:
     - id: ui-aqua
       name: '@deepseek-ai/dsh-client-ui-aqua'
       config:
-        video: 'C:/path/to/your-wallpaper.mp4'
+        video: 'D:/bg.mp4'   # 可选；不写则用包内静态壁纸
 ```
 
-**Global glass.** `desktop/resources/aqua-overrides.css` from harness-desktop is
-inlined into the bundle and injected as a fifth `<style data-plugin-css>`; it is
-keyed on `html[data-dsh-aqua]`, so turning the skin off retracts all of it —
-including the override that makes the desktop shell's opaque
-`[data-windows-titlebar] .centerCol` translucent.
+## 设置项
 
-**Performance**
-
-- the WebGL fluid canvas is capped at 1× DPR and skipped entirely while hidden
-  (wallpaper mode hides it with `display:none`, so the shader used to run
-  invisibly);
-- every animation loop (fluid, whale, mesh) idles while `document.hidden`;
-- the wallpaper `<video>` uses `preload="metadata"` and pauses when the window
-  is hidden, so a 4K source stops decoding in the background.
-
-## Install
-
-Requires a dsh installation with a desktop profile (`~/.dsh/profiles/desktop`).
-
-```powershell
-pwsh -File scripts/install.ps1 -Video 'C:/path/to/wallpaper.mp4'
-```
-
-The script copies the package to `~/.dsh/plugins/@deepseek-ai/dsh-client-ui-aqua`,
-links it into the profile's `node_modules`, records the dependency, and rewrites
-the `ui-aqua` row in the profile's `cordis.patch.yml` (backups next to every file
-it touches). `-Uninstall` removes the row and the link.
-
-Manual install is the same three steps:
-
-1. put the package on disk and link it as `@deepseek-ai/dsh-client-ui-aqua`
-   inside the profile's `node_modules`;
-2. add the `insert` row above to `cordis.patch.yml`;
-3. reload the Web UI (desktop builds only load the bundle at start-up, so
-   **restart the app**).
-
-## CSS variable / setting reference
-
-| Setting | Default | Notes |
+| 位置 | 说明 | 默认 |
 | --- | --- | --- |
-| 模式 | 云母效果 | mica = floating glass cards; 兼容模式 keeps the stock layout |
-| 玻璃模糊度 / 磨砂度 | 16 px / 13 % | the overrides are calibrated for this pair |
-| 背景 | 壁纸 | 流体 = animated shader backdrop, 壁纸 = image/video |
-| 壁纸蒙层 / 模糊 | 70 % / 10 px | image wallpaper only |
-| 视频亮度 / 模糊 | 50 / 4 px | video wallpaper only |
+| 玻璃主题 | 总开关 | 开 |
+| 模式 | 云母效果 / 兼容模式 | 云母效果 |
+| 玻璃模糊度 / 磨砂度 | 云母模式下所有玻璃面板的模糊与不透明度 | 16 px / 13 % |
+| 背景 | 流体 / 壁纸 | 壁纸 |
+| 壁纸蒙层 / 模糊 | 图片壁纸的暗度与柔化 | 70 % / 10 px |
+| 视频亮度 / 模糊 | 视频壁纸的亮度与柔化 | 50 / 4 px |
+| 壁纸 | 选择图片 / 选择视频 / 删除 | 插件自带的静态图 |
 
-## Build
+快捷键：`Ctrl + Alt + A` 开关整套皮肤。
 
-`build/build-aqua.mjs` patches an upstream Aqua bundle into this one. It needs
-the upstream `lib/client.js` and `aqua-overrides.css`; paths default to the
-layout of the authoring machine and can be overridden:
+## 目录结构
+
+```
+lib/client.js        浏览器端：皮肤、设置行、开关、动画与着色器
+lib/index.js         宿主端：把本地视频以 /aqua/wallpaper.mp4 流式提供（支持 Range）
+lib/types/           类型声明
+assets/wallpaper.jpg 自带静态壁纸
+build/build-aqua.mjs 从基础包生成 lib/client.js 的构建脚本
+scripts/install.ps1  安装 / 卸载
+docs/                截图与 Release 说明
+```
+
+## 构建
+
+`lib/client.js` 由 `build/build-aqua.mjs` 从基础包加上一组锚点补丁生成（补丁里每一处替换都要求唯一命中，改错会直接报错退出）。基础包路径可用环境变量覆盖：
 
 ```powershell
-$env:AQUA_SRC = 'C:/path/to/upstream/dsh-client-ui-aqua'
+$env:AQUA_SRC       = 'C:/path/to/base/dsh-client-ui-aqua'
 $env:AQUA_OVERRIDES = 'C:/path/to/aqua-overrides.css'
+$env:AQUA_OUT       = 'C:/path/to/output'
 node build/build-aqua.mjs
 ```
 
-The script is intentionally anchor-based — every upstream edit must match once,
-and the build fails loudly otherwise.
+## 兼容性
 
-## Licence
+- 目标运行时：dsh `0.2.2-rc.1`（`engines.dsh` 已声明，兼容门禁直接放行）。
+- 桌面壳专用：修复了 `[data-windows-titlebar]` 把聊天列刷成不透明的问题；纯浏览器端不需要这条规则也能用。
+- 若运行时大版本变化，`lib/client.js` 里对 `@deepseek-ai/dsh-client-store`、图标名、`settings.general.item` 槽位的假设需要重新核对。
 
-MIT. Upstream skin and override sheet are MIT; see `LICENSE` for attribution.
+## 致谢
+
+皮肤基础来自 [@deepseek-ai/dsh-client-ui-aqua](https://github.com/WYH66666666/DSH-Transparent-UI-Plugin)（MIT，作者 WYH66666666），在此基础上重做了全局覆盖层、设置面板、壁纸管线与性能。
+
+同一套界面的桌面版客户端：[colm20060530/harness-desktop](https://github.com/colm20060530/harness-desktop)。
+
+## License
+
+MIT

@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-aqua",
-  "description": "Aqua — glassmorphism skin for DeepSeek Harness (dsh 0.2.x): global glass layer, master switch, local video wallpaper, low-CPU loops",
+  "description": "DeepSeek Harness 的玻璃拟态主题：云母布局、可换壁纸/流体背景、总开关、全局玻璃覆盖层",
   "version": "1.4.0-dsh0.2.2",
   "publishConfig": {
     "access": "public"
@@ -80,10 +80,10 @@
     "dsh": "^0.2.2-rc.1"
   },
   "aqua": {
-    "upstream": "https://github.com/WYH66666666/DSH-Transparent-UI-Plugin",
-    "improved": "https://github.com/colm20060530/harness-desktop",
-    "overridesCss": "desktop/resources/aqua-overrides.css (inlined into lib/client.js)",
-    "targets": "dsh 0.2.2-rc.1 desktop profile"
+    "basedOn": [
+      "https://github.com/WYH66666666/DSH-Transparent-UI-Plugin"
+    ],
+    "targets": "dsh 0.2.2-rc.1"
   },
   "keywords": [
     "deepseek-harness",
@@ -91,7 +91,8 @@
     "plugin",
     "theme",
     "glassmorphism",
-    "aqua"
+    "aqua",
+    "wallpaper"
   ],
   "homepage": "https://github.com/colm20060530/dsh-aqua-plugin#readme",
   "author": "Aqua plugin contributors",
