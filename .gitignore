@@ -1,0 +1,6 @@
+node_modules/
+*.bak
+*.bak-*
+.*.staging-*
+tmp/
+_tmp/
