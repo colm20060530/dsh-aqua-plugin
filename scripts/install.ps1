@@ -94,6 +94,7 @@ $block = @"
       name: '$plugin'
       config:
         video: '$videoLiteral'
+        schema: 3
 "@
 [System.IO.File]::WriteAllText($patchFile, $text.TrimEnd() + $block, (New-Object System.Text.UTF8Encoding $false))
 

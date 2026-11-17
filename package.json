@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-aqua",
   "description": "DeepSeek Harness 的玻璃拟态主题：云母布局、可换壁纸/流体背景、总开关、全局玻璃覆盖层",
-  "version": "1.4.2-dsh0.2.2",
+  "version": "1.4.3-dsh0.2.2",
   "publishConfig": {
     "access": "public"
   },

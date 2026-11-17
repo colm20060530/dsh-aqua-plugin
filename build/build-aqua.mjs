@@ -126,7 +126,7 @@ js = replaceOnce(
   js,
   '\t\t/** Read the persisted enable flag (absent storage means on). */',
   '\t\tconst AQUA_SCHEMA_KEY = "dsh.ui-aqua.schema";\n'
-    + '\t\tconst AQUA_SCHEMA = "2";\n'
+    + '\t\tconst AQUA_SCHEMA = String(ctx.config?.schema ?? "2");\n'
     + '\t\ttry {\n'
     + '\t\t\tif (localStorage.getItem(AQUA_SCHEMA_KEY) !== AQUA_SCHEMA) {\n'
     + '\t\t\t\tfor (const key of Object.keys(localStorage)) if (key.startsWith("dsh.ui-aqua.") && key !== AQUA_SCHEMA_KEY && key !== "dsh.ui-aqua.enabled") localStorage.removeItem(key);\n'
@@ -233,6 +233,26 @@ js = replaceOnce(
   '\t\t\tsetBackground(value) {\n\t\t\t\tif (value === this.settings.background) return;\n\t\t\t\tthis.settings.background = value;\n\t\t\t\twriteBackground(value);\n\t\t\t\tif (this.enabled) {\n\t\t\t\t\tthis.applySettings();\n\t\t\t\t\tthis.syncWhale();\n\t\t\t\t\tthis.syncMesh();\n\t\t\t\t}\n\t\t\t}',
   'setBackground sync',
 );
+
+// 4g. shipped defaults, as chosen in the running app:
+//     glass blur 12px / frost 19%, video blur 2px / brightness 50, backdrop
+//     brightness 48, and every ambient decoration + hover effect off.
+const DEFAULT_NUMBERS = {
+  'blur: 16,': 'blur: 12,',
+  'frost: 13,': 'frost: 19,',
+  'videoBlur: 14,': 'videoBlur: 2,',
+
+  'bgBrightness: 50,': 'bgBrightness: 48,',
+  'whale: true,': 'whale: false,',
+  'critters: true,': 'critters: false,',
+  'mesh: true,': 'mesh: false,',
+  'spotlight: true,': 'spotlight: false,',
+  'press: true,': 'press: false,',
+};
+for (const [from, to] of Object.entries(DEFAULT_NUMBERS)) {
+  if (from === to) continue;
+  js = replaceAll(js, from, to, 2, 'default ' + from.trim());
+}
 
 // 5. inline the global-glass supplement next to the plugin's own four stylesheets
 const overridesBlock =
