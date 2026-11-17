@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-client-ui-aqua",
   "description": "Aqua: glassmorphism skin for the DSH Web surface — improved global glass layer (Harness Desktop overrides inlined for dsh 0.2.x)",
-  "version": "1.4.1-dsh0.2.2",
+  "version": "1.4.2-dsh0.2.2",
   "publishConfig": {
     "access": "public"
   },

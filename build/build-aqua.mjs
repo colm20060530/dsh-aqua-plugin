@@ -209,6 +209,31 @@ html[data-dsh-aqua][data-dsh-aqua-wallpaper] *::after {
 `;
 overridesCss = overridesCss + perfCss;
 
+// 4f. the particle whale and the dot mesh are drawn for the fluid board; over a
+//     wallpaper they are near-invisible decoration that still runs two
+//     full-window canvas loops at 30 fps. Only mount them on the fluid board.
+js = replaceAll(
+  js,
+  '\t\t\t\tif (this.enabled && this.settings.whale) {',
+  '\t\t\t\tif (this.enabled && this.settings.whale && this.settings.background === "fluid") {',
+  1,
+  'whale mount guard',
+);
+js = replaceAll(
+  js,
+  '\t\t\t\tif (this.enabled && this.settings.mesh) {',
+  '\t\t\t\tif (this.enabled && this.settings.mesh && this.settings.background === "fluid") {',
+  1,
+  'mesh mount guard',
+);
+// keep them in sync when the backdrop source changes
+js = replaceOnce(
+  js,
+  '\t\t\tsetBackground(value) {\n\t\t\t\tif (value === this.settings.background) return;\n\t\t\t\tthis.settings.background = value;\n\t\t\t\twriteBackground(value);\n\t\t\t\tif (this.enabled) this.applySettings();\n\t\t\t}',
+  '\t\t\tsetBackground(value) {\n\t\t\t\tif (value === this.settings.background) return;\n\t\t\t\tthis.settings.background = value;\n\t\t\t\twriteBackground(value);\n\t\t\t\tif (this.enabled) {\n\t\t\t\t\tthis.applySettings();\n\t\t\t\t\tthis.syncWhale();\n\t\t\t\t\tthis.syncMesh();\n\t\t\t\t}\n\t\t\t}',
+  'setBackground sync',
+);
+
 // 5. inline the global-glass supplement next to the plugin's own four stylesheets
 const overridesBlock =
   '\t\t//#region aqua-overrides: Harness Desktop global glass supplement\n'
@@ -337,19 +362,39 @@ js = replaceOnce(
 js = replaceOnce(
   js,
   '<video data-dsh-aqua-wallpaper-video loop playsinline preload=\\"auto\\"></video>',
-  '<video data-dsh-aqua-wallpaper-video loop playsinline preload=\\"metadata\\"></video>',
+  '<video data-dsh-aqua-wallpaper-video loop playsinline preload=\\"auto\\" disablepictureinpicture></video>',
   'video preload',
 );
-// pause the wallpaper decoder (and its 4K decode cost) while hidden
+// pause the wallpaper decoder (and its decode cost) while hidden; re-check the
+// streamed file on the way back so a swapped wallpaper needs no app restart.
 js = replaceOnce(
   js,
   '\t\t//#region src/client/wallpaper-store.ts',
   '\t\t/** Park the wallpaper decoder while the window is hidden (4K decode is not free). */\n'
+    + '\t\tconst WALLPAPER_STAMP_KEY = "dsh.aqua.wallpaper.stamp";\n'
+    + '\t\t/** Reload the streamed wallpaper when the file behind the route changed. */\n'
+    + '\t\tconst refreshStreamedWallpaper = () => {\n'
+    + '\t\t\tconst video = document.querySelector("[data-dsh-aqua-wallpaper-video]");\n'
+    + '\t\t\tif (video === null) return;\n'
+    + '\t\t\tconst src = video.getAttribute("src");\n'
+    + '\t\t\tif (src === null || !src.endsWith("/aqua/wallpaper.mp4")) return;\n'
+    + '\t\t\tfetch(src, { method: "HEAD", cache: "no-store" }).then((response) => {\n'
+    + '\t\t\t\tif (!response.ok) return;\n'
+    + '\t\t\t\tconst stamp = response.headers.get("content-length") + ":" + (response.headers.get("last-modified") ?? "");\n'
+    + '\t\t\t\tif (localStorage.getItem(WALLPAPER_STAMP_KEY) === stamp) return;\n'
+    + '\t\t\t\tlocalStorage.setItem(WALLPAPER_STAMP_KEY, stamp);\n'
+    + '\t\t\t\tif (localStorage.getItem(WALLPAPER_STAMP_KEY + ".first") === null) return;\n'
+    + '\t\t\t\tvideo.setAttribute("src", src + "?v=" + encodeURIComponent(stamp));\n'
+    + '\t\t\t\tvideo.play().catch(() => {});\n'
+    + '\t\t\t}).catch(() => {});\n'
+    + '\t\t};\n'
+    + '\t\tif (localStorage.getItem(WALLPAPER_STAMP_KEY) === null) localStorage.setItem(WALLPAPER_STAMP_KEY + ".first", "1");\n'
     + '\t\tdocument.addEventListener("visibilitychange", () => {\n'
     + '\t\t\tconst video = document.querySelector("[data-dsh-aqua-wallpaper-video]");\n'
     + '\t\t\tif (video === null) return;\n'
-    + '\t\t\tif (document.hidden) video.pause();\n'
-    + '\t\t\telse if (video.getAttribute("src") !== null) video.play().catch(() => {});\n'
+    + '\t\t\tif (document.hidden) { video.pause(); return; }\n'
+    + '\t\t\trefreshStreamedWallpaper();\n'
+    + '\t\t\tif (video.getAttribute("src") !== null && video.paused) video.play().catch(() => {});\n'
     + '\t\t}, { passive: true });\n'
     + '\t\t/** Fall back to the bundled still when the wallpaper video cannot be played. */\n'
     + '\t\tdocument.addEventListener("error", (event) => {\n'
