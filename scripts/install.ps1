@@ -1,21 +1,17 @@
 # Deploy the Aqua glassmorphism client plugin into the running DSH desktop profile.
 #
 # What it does (idempotent, backs up every file it edits):
-#   1. installs the package under $DSH_HOME\plugins\@deepseek-ai\dsh-client-ui-aqua
+#   1. installs the built package under $DSH_HOME\plugins\@deepseek-ai\dsh-client-ui-aqua
 #   2. links it into the profile's node_modules (junction)
 #   3. records it in the profile package.json dependencies so a later `pnpm` run keeps it
-#   4. writes (or rewrites) the `ui-aqua` loader row in the profile cordis.patch.yml
-# The HMR service watches that patch file, so the host row mounts immediately; the
-# browser half still needs an app restart (desktop builds load it once at start-up).
+#   4. inserts the `ui-aqua` loader row into the profile cordis.patch.yml
+# The HMR service watches that patch file, so the row hot-mounts without a restart.
 #
-# Usage:
-#   pwsh -File install.ps1                          # shipped defaults (still image wallpaper)
-#   pwsh -File install.ps1 -Video 'D:/bg.mp4'       # video wallpaper streamed from disk
-#   pwsh -File install.ps1 -Uninstall               # remove the row and the link
+# Usage:  pwsh -File install.ps1 [-Source <built package dir>] [-Uninstall]
 
 param(
-    [string]$Source = (Join-Path $PSScriptRoot '..'),
-    [string]$Video = '',
+    [string]$Source = 'D:\harnessproject\aqua\package\@deepseek-ai\dsh-client-ui-aqua',
+    [string]$Video = 'C:/Users/Administrator/Videos/【哲风壁纸】光影-动漫美女-彩色.mp4',
     [string]$DshHome = $env:DSH_HOME,
     [switch]$Uninstall
 )
@@ -87,28 +83,18 @@ $text = Get-Content $patchFile -Raw -Encoding utf8
 $blockPattern = "(?ms)^# ── Aqua 玻璃拟态.*?(?=^# ──|\z)"
 $text = [regex]::Replace($text, $blockPattern, '')
 $videoLiteral = $Video.Replace("'", "''")
-if ($Video -eq '') {
-    $configBlock = ''
-} else {
-    $configBlock = @"
-      config:
-        video: '$videoLiteral'
-
-"@
-}
-$header = @"
+$block = @"
 
 # ── Aqua 玻璃拟态 ────────────────────────────────────────────────────────────
 # 客户端插件（Aqua 主题 + 全局玻璃拟态覆盖层）。包位于 ``$target``，
-# 由 profile 的 node_modules 软链接解析。
-# ``video`` 是宿主半边从本地磁盘流出的壁纸（同源路由 /aqua/wallpaper.mp4）；
-# 不写 config 时，客户端回落到包内自带的静态壁纸。
+# 由 profile 的 node_modules 软链接解析；HMR 监听本文件，写入后即时挂载。
+# ``video`` 是宿主半边从本地磁盘流出的默认壁纸（同源路由 /aqua/wallpaper.mp4）。
 - insert:
     - id: ui-aqua
       name: '$plugin'
-
+      config:
+        video: '$videoLiteral'
 "@
-$block = $header + $configBlock
 [System.IO.File]::WriteAllText($patchFile, $text.TrimEnd() + $block, (New-Object System.Text.UTF8Encoding $false))
 
 Write-Host ''

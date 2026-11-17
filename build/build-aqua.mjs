@@ -16,10 +16,9 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-const SRC = process.env.AQUA_SRC ?? 'D:\\harnessproject\\_aqua\\harness-desktop\\desktop\\resources\\plugins\\@deepseek-ai\\dsh-client-ui-aqua';
-const OVERRIDES = process.env.AQUA_OVERRIDES ?? 'D:\\harnessproject\\_aqua\\harness-desktop\\desktop\\resources\\aqua-overrides.css';
-const OUT = process.env.AQUA_OUT ?? 'D:\\harnessproject\\aqua\\package\\@deepseek-ai\\dsh-client-ui-aqua';
-const WALLPAPER_SRC = process.env.AQUA_STILL ?? 'D:\\harnessproject\\aqua\\package-assets\\wallpaper.jpg';
+const SRC = 'D:\\harnessproject\\_aqua\\harness-desktop\\desktop\\resources\\plugins\\@deepseek-ai\\dsh-client-ui-aqua';
+const OVERRIDES = 'D:\\harnessproject\\_aqua\\harness-desktop\\desktop\\resources\\aqua-overrides.css';
+const OUT = 'D:\\harnessproject\\aqua\\package\\@deepseek-ai\\dsh-client-ui-aqua';
 
 const PACKAGE = '@deepseek-ai/dsh-client-ui-aqua';
 
@@ -145,7 +144,7 @@ js = replaceAll(js, 'wallpaperBlur: 0,', 'wallpaperBlur: 10,', 2, 'default wallp
 js = replaceAll(js, 'wallpaperFrost: 0,', 'wallpaperFrost: 70,', 2, 'default wallpaper frost');
 // 4e. video wallpaper tuning: a touch of blur, and a bright enough picture that
 //     the glass still reads as glass.
-js = replaceAll(js, 'videoBlur: 6,', 'videoBlur: 4,', 2, 'default video blur');
+js = replaceAll(js, 'videoBlur: 6,', 'videoBlur: 14,', 2, 'default video blur');
 js = replaceAll(js, 'videoBrightness: 20,', 'videoBrightness: 50,', 1, 'default video brightness');
 js = replaceAll(js, 'videoBrightness: 20\n', 'videoBrightness: 50\n', 1, 'default video brightness (object literal)');
 
@@ -166,6 +165,50 @@ html[data-dsh-aqua][data-dsh-float] [class*="emptyTabHost"] {
 }
 `;
 overridesCss = overridesCss + shellCss;
+// 5c. performance pass.
+//   - saturate() beside a blur forces an extra colour-matrix pass; all 28 uses sit
+//     inside backdrop-filter, so dropping it costs nothing visually.
+//   - inline code / pre / select / dialog buttons are tiny or numerous; a live
+//     backdrop there is invisible and pays a render pass per element
+//     (a chat view had 40 <code> + 4 <pre> out of 57 glass elements).
+//   - the decorative critters are pure compositing cost over a wallpaper.
+
+const perfCss = `
+/* ============ 7. render-pass budget ============ */
+/* Small or numerous elements never need a live backdrop: an inline <code> is a
+   few characters wide, and its own colour-mix fill already reads as glass. */
+html[data-dsh-aqua] :is(code, kbd, samp, pre, select, option, label, span, b, i, em, strong, small) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-dsh-aqua] [role="dialog"] button,
+html[data-dsh-aqua] [role="dialog"] [class*="segItem"],
+html[data-dsh-aqua] [role="dialog"] [class*="navCell"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* The dialog scrim covers the viewport; blurring it buys nothing. */
+html[data-dsh-aqua] div[role="presentation"] > [class*="mask"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* Fish, bubbles and plankton only make sense over the fluid board. */
+html[data-dsh-aqua][data-dsh-aqua-wallpaper] [data-aqua-critter] {
+  display: none !important;
+}
+/* Over a wallpaper the backdrop is a still frame that the wallpaper layer has
+   already blurred; a live backdrop-filter on top of it re-filters the same
+   pixels every frame and reads as the same picture. Keep the tint, drop the
+   filter — this is what removes the per-frame full-screen blur cost. */
+html[data-dsh-aqua][data-dsh-aqua-wallpaper] *,
+html[data-dsh-aqua][data-dsh-aqua-wallpaper] *::before,
+html[data-dsh-aqua][data-dsh-aqua-wallpaper] *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+`;
+overridesCss = overridesCss + perfCss;
+
 // 5. inline the global-glass supplement next to the plugin's own four stylesheets
 const overridesBlock =
   '\t\t//#region aqua-overrides: Harness Desktop global glass supplement\n'
@@ -352,6 +395,9 @@ if (process.env.AQUA_DIAG === '1') {
 }
 
 // emit
+// saturate() beside a blur costs an extra colour-matrix pass per glass element;
+// every use in this bundle sits inside a backdrop-filter value (verified: 28/28).
+js = js.replace(/ saturate\(\d+%\)/g, '').replace(/saturate\(\d+%\)/g, '');
 if (existsSync(OUT)) rmSync(OUT, { recursive: true, force: true });
 mkdirSync(join(OUT, 'lib', 'types', 'client'), { recursive: true });
 writeFileSync(join(OUT, 'lib', 'client.js'), js);
@@ -472,7 +518,7 @@ writeFileSync(join(OUT, 'lib', 'index.js'), hostHalf);
 // wallpaper asset served through the client-modules package-asset route
 // (/plugins/<pkg>/assets/<file>), which needs the ./assets/* export.
 mkdirSync(join(OUT, 'assets'), { recursive: true });
-copyFileSync(WALLPAPER_SRC, join(OUT, WALLPAPER_ASSET));
+copyFileSync('D:\\harnessproject\\aqua\\package-assets\\wallpaper.jpg', join(OUT, WALLPAPER_ASSET));
 
 // package manifest: same package identity, patched build
 const pkg = JSON.parse(readFileSync(join(SRC, 'package.json'), 'utf8'));
@@ -504,4 +550,3 @@ const outBytes = readFileSync(join(OUT, 'lib', 'client.js')).length;
 console.log('built', OUT);
 console.log('client.js bytes:', outBytes, '(source', readFileSync(join(SRC, 'lib', 'client.js')).length + ')');
 console.log('overrides css bytes:', overridesCss.length);
-
