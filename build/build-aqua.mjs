@@ -459,6 +459,9 @@ if (process.env.AQUA_DIAG === '1') {
   js = replaceOnce(js, '\t\t//#region src/client/index.ts', diagBlock + '\t\t//#region src/client/index.ts', 'diagnostic block');
 }
 
+// brightness is a single literal (SETTINGS_DEFAULTS) -> 35
+js = js.replace(/videoBrightness: \d+\b/, 'videoBrightness: 35');
+
 // emit
 // saturate() beside a blur costs an extra colour-matrix pass per glass element;
 // every use in this bundle sits inside a backdrop-filter value (verified: 28/28).
