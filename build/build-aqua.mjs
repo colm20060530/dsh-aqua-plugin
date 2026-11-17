@@ -122,19 +122,39 @@ js = replaceAll(
 
 // 4d. one-time settings migration: earlier builds shipped a fluid default and the
 //     first video attempt left a 2px blur behind, so reset the aqua keys once.
+//
+//     The wipe must run inside apply(): the schema lives on the loader-row config,
+//     and module scope has no `ctx` — a top-level `ctx.config` reference throws
+//     "ctx is not defined" and the whole client entry fails to import (boot error).
 js = replaceOnce(
   js,
   '\t\t/** Read the persisted enable flag (absent storage means on). */',
-  '\t\tconst AQUA_SCHEMA_KEY = "dsh.ui-aqua.schema";\n'
-    + '\t\tconst AQUA_SCHEMA = String(ctx.config?.schema ?? "2");\n'
-    + '\t\ttry {\n'
-    + '\t\t\tif (localStorage.getItem(AQUA_SCHEMA_KEY) !== AQUA_SCHEMA) {\n'
+  '\t\t/** Storage key stamping the schema version the current keys were written under. */\n'
+    + '\t\tconst AQUA_SCHEMA_KEY = "dsh.ui-aqua.schema";\n'
+    + '\t\t/** Schema shipped with this build; the loader row may pin a different one. */\n'
+    + '\t\tconst AQUA_SCHEMA_VERSION = "3";\n'
+    + '\t\t/**\n'
+    + '\t\t* Wipe aqua keys written under an older schema, then stamp the current one.\n'
+    + '\t\t* The master switch survives so a disabled skin stays disabled.\n'
+    + '\t\t* @param config - loader-row config (`schema` overrides the build default).\n'
+    + '\t\t*/\n'
+    + '\t\tfunction migrateAquaSchema(config) {\n'
+    + '\t\t\ttry {\n'
+    + '\t\t\t\tconst schema = String(config?.schema ?? AQUA_SCHEMA_VERSION);\n'
+    + '\t\t\t\tif (localStorage.getItem(AQUA_SCHEMA_KEY) === schema) return;\n'
     + '\t\t\t\tfor (const key of Object.keys(localStorage)) if (key.startsWith("dsh.ui-aqua.") && key !== AQUA_SCHEMA_KEY && key !== "dsh.ui-aqua.enabled") localStorage.removeItem(key);\n'
-    + '\t\t\t\tlocalStorage.setItem(AQUA_SCHEMA_KEY, AQUA_SCHEMA);\n'
-    + '\t\t\t}\n'
-    + '\t\t} catch {}\n'
+    + '\t\t\t\tlocalStorage.setItem(AQUA_SCHEMA_KEY, schema);\n'
+    + '\t\t\t} catch {}\n'
+    + '\t\t}\n'
     + '\t\t/** Read the persisted enable flag (absent storage means on). */',
   'settings migration',
+);
+// ... and the call site: apply() is the first place where the loader config exists.
+js = replaceOnce(
+  js,
+  '\t\tfunction apply(ctx) {',
+  '\t\tfunction apply(ctx, config) {\n\t\t\tmigrateAquaSchema(config);',
+  'settings migration call',
 );
 
 
@@ -253,6 +273,56 @@ for (const [from, to] of Object.entries(DEFAULT_NUMBERS)) {
   if (from === to) continue;
   js = replaceAll(js, from, to, 2, 'default ' + from.trim());
 }
+
+// 4h. the flag READERS are the real first-run defaults (the settings store only
+//     seeds the UI), and they shipped "absent means on" — so a fresh install still
+//     turned the whale, the fish, the mesh, the spotlight and the press effect on.
+//     The shipped look has all of them off.
+const FLAG_READERS = [
+  ['Whale', 'WHALE_KEY', 'particle-whale'],
+  ['Critters', 'CRITTERS_KEY', 'critters'],
+  ['Mesh', 'MESH_KEY', 'interactive-mesh'],
+  ['Spotlight', 'SPOTLIGHT_KEY', 'cursor-spotlight'],
+  ['Press', 'PRESS_KEY', 'hover-press'],
+];
+for (const [fn, key, label] of FLAG_READERS) {
+  js = replaceOnce(
+    js,
+    `\t\t/** Read the ${label} flag (absent means on). */`,
+    `\t\t/** Read the ${label} flag (absent means off — the shipped default). */`,
+    `flag doc ${fn}`,
+  );
+  const removeEntrance = fn === 'Press' ? '\t\t\t\tlocalStorage.removeItem("dsh.ui-aqua.entrance");\n' : '';
+  js = replaceOnce(
+    js,
+    `\t\tfunction read${fn}() {\n\t\t\ttry {\n${removeEntrance}`
+      + `\t\t\t\tconst raw = localStorage.getItem(${key});\n`
+      + '\t\t\t\treturn raw === null ? true : raw === "true";\n'
+      + '\t\t\t} catch {\n'
+      + '\t\t\t\treturn true;\n'
+      + '\t\t\t}',
+    `\t\tfunction read${fn}() {\n\t\t\ttry {\n${removeEntrance}`
+      + `\t\t\t\tconst raw = localStorage.getItem(${key});\n`
+      + '\t\t\t\treturn raw === null ? false : raw === "true";\n'
+      + '\t\t\t} catch {\n'
+      + '\t\t\t\treturn false;\n'
+      + '\t\t\t}',
+    `flag default ${fn}`,
+  );
+}
+// the storage-failure branches must agree with the shipped look too
+js = replaceOnce(
+  js,
+  '\t\t\t} catch {\n\t\t\t\treturn "fluid";\n\t\t\t}\n\t\t}\n\t\t/** Persist the backdrop source. */',
+  '\t\t\t} catch {\n\t\t\t\treturn "wallpaper";\n\t\t\t}\n\t\t}\n\t\t/** Persist the backdrop source. */',
+  'readBackground failure default',
+);
+js = replaceOnce(
+  js,
+  '\t\t\t} catch {\n\t\t\t\treturn "";\n\t\t\t}\n\t\t}\n\t\t/** Persist the wallpaper data URL (quota failures keep it in memory only). */',
+  '\t\t\t} catch {\n\t\t\t\treturn DEFAULT_WALLPAPER;\n\t\t\t}\n\t\t}\n\t\t/** Persist the wallpaper data URL (quota failures keep it in memory only). */',
+  'readWallpaper failure default',
+);
 
 // 5. inline the global-glass supplement next to the plugin's own four stylesheets
 const overridesBlock =
@@ -459,8 +529,9 @@ if (process.env.AQUA_DIAG === '1') {
   js = replaceOnce(js, '\t\t//#region src/client/index.ts', diagBlock + '\t\t//#region src/client/index.ts', 'diagnostic block');
 }
 
-// brightness is a single literal (SETTINGS_DEFAULTS) -> 35
-js = js.replace(/videoBrightness: \d+\b/, 'videoBrightness: 35');
+// brightness: BOTH shipped literals (the settings store and SETTINGS_DEFAULTS that
+// readSetting falls back to) must say 35, or a fresh install still reads 50.
+js = js.replace(/videoBrightness: \d+\b/g, 'videoBrightness: 35');
 
 // emit
 // saturate() beside a blur costs an extra colour-matrix pass per glass element;
@@ -590,7 +661,7 @@ copyFileSync('D:\\harnessproject\\aqua\\package-assets\\wallpaper.jpg', join(OUT
 
 // package manifest: same package identity, patched build
 const pkg = JSON.parse(readFileSync(join(SRC, 'package.json'), 'utf8'));
-pkg.version = '1.4.2-dsh0.2.2';
+pkg.version = '1.4.3-dsh0.2.2';
 pkg.description = 'DeepSeek Harness 的玻璃拟态主题：云母布局、可换壁纸/流体背景、总开关、全局玻璃覆盖层';
 pkg.repository = { type: 'git', url: 'git+https://github.com/colm20060530/dsh-aqua-plugin.git' };
 pkg.homepage = 'https://github.com/colm20060530/dsh-aqua-plugin#readme';

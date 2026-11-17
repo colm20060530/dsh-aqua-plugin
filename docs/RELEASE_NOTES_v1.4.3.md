@@ -11,25 +11,23 @@
 | 视频模糊度 | 2 px |
 | 视频亮度 | 35 % |
 | 背景亮度 | 48 % |
+| 背景 | 壁纸（内置视频） |
 | 粒子鲸鱼 / 小鱼 / 网格交互 | 关 |
 | 鼠标辉光 / 悬停下压 | 关 |
-| 背景 | 壁纸（可用 流体 切换） |
 
-## 其他
+## 修复
 
-- 新增设置架构版本：`cordis.patch.yml` 的插件行可写 `schema` 字段，默认值调整后老配置会一次性重置到新默认，不用手动清 localStorage。
-- 设置面板里所有旋钮仍然可以随时改回流体背景 + 完整玻璃 + 全部装饰。
+- **装饰与悬停效果首装也是关**：五个开关的读取函数原来「没有记录就算开」，新装或新 profile 仍会打开粒子鲸鱼、小鱼、网格交互、鼠标辉光和悬停下压。读取默认值改为关。
+- **视频亮度首装就是 35**：`SETTINGS_DEFAULTS` 里原来还留着 50，`readSetting` 缺记录时回退到它；现在两处默认字面量统一为 35。
+- **设置架构版本**：`cordis.patch.yml` 的插件行可写 `schema`，默认值调整后老 profile 会一次性重置 `dsh.ui-aqua.*`（保留总开关）。迁移在 `apply(ctx, config)` 内执行；写在模块顶层引用 `ctx` 会让客户端条目 import 失败（`web boot: 1 entry did not activate`）。
+- 存储不可用时背景回退到壁纸、壁纸回退到内置视频。
 
-## 安装
+## 升级
+
+替换 `lib/client.js` 与 `package.json` 后重启应用，或重新执行安装脚本：
 
 ```powershell
-git clone https://github.com/colm20060530/dsh-aqua-plugin
-cd dsh-aqua-plugin
-pwsh -File scripts/install.ps1 -Video 'D:/bg.mp4'
+pwsh -File scripts/install.ps1
 ```
 
-装完重启一次 DeepSeek Harness。
-
-## 附件
-
-- `aqua-plugin-1.4.3.zip` — 解压到 `~/.dsh/plugins/@deepseek-ai/dsh-client-ui-aqua` 即可
+已经存过设置的 profile 不会被覆盖；想回到出厂观感，清掉 `localStorage` 里的 `dsh.ui-aqua.*`（`dsh.ui-aqua.enabled` 除外）即可。
