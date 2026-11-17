@@ -16,7 +16,7 @@
 
 ## 安装
 
-需要一份带 desktop profile 的 dsh 安装（`~/.dsh/profiles/desktop`）。
+前置条件：DeepSeek Harness 桌面端 `0.2.2-rc.1`（Windows / macOS / Linux 均可，需要 PowerShell 7 或 pwsh）。
 
 ```powershell
 git clone https://github.com/colm20060530/dsh-aqua-plugin
@@ -25,28 +25,35 @@ pwsh -File scripts/install.ps1                          # 用插件自带的静�
 pwsh -File scripts/install.ps1 -Video 'D:/bg.mp4'       # 用自己的视频当壁纸
 ```
 
+装完**重启一次 DeepSeek Harness**（渲染端只在启动时加载 bundle），然后到设置 → 通用设置看「玻璃主题」那一栏。
+
+首次在全新机器上安装时，先启动一次 DeepSeek Harness 让它生成 `~/.dsh/profiles/desktop`，再跑脚本；脚本找不到 profile 会直接报错并提示。
+
 脚本会做四件事，每一步都会留 `.bak-before-aqua-<时间戳>` 备份：
 
-1. 把包放进 `~/.dsh/plugins/@deepseek-ai/dsh-client-ui-aqua`
+1. 把包放进 `~/.dsh/plugins/@deepseek-ai/dsh-client-ui-aqua`（只复制 `package.json` / `lib` / `assets` / `LICENSE`，不带构建脚本和文档）
 2. 在 profile 的 `node_modules` 里建 junction
 3. 把依赖写进 profile 的 `package.json`（避免后续 pnpm 操作把它清掉）
-4. 在 profile 的 `cordis.patch.yml` 写入 `ui-aqua` 行
+4. 在 profile 的 `cordis.patch.yml` 写入 `ui-aqua` 行（重复执行只会改写自己那一段）
 
-装完重启一次 DeepSeek Harness（渲染端只在启动时加载 bundle）。卸载：
+卸载：
 
 ```powershell
 pwsh -File scripts/install.ps1 -Uninstall
 ```
 
-手动安装就是把包放到 profile 的 `node_modules/@deepseek-ai/dsh-client-ui-aqua`，再在 `cordis.patch.yml` 加：
+手动安装就是把 `package.json`+`lib`+`assets`+`LICENSE` 放到 profile 的 `node_modules/@deepseek-ai/dsh-client-ui-aqua`，再在 `cordis.patch.yml` 加：
 
 ```yaml
 - insert:
     - id: ui-aqua
       name: '@deepseek-ai/dsh-client-ui-aqua'
       config:
+        schema: 3
         video: 'D:/bg.mp4'   # 可选；不写则用包内静态壁纸
 ```
+
+> 别人的机器：`config.video` 不写就行，插件会退回包内静态壁纸，不会引用你自己电脑上的路径。
 
 ## 设置项
 
@@ -59,8 +66,8 @@ pwsh -File scripts/install.ps1 -Uninstall
 | 壁纸蒙层 / 模糊 | 图片壁纸的暗度与柔化 | 70 % / 10 px |
 | 背景亮度 | 深色模式下整体压暗程度（50 = 原样） | 48 % |
 | 粒子鲸鱼 / 小鱼 / 网格 / 辉光 / 悬停下压 | 环境装饰 | 全部关闭 |
-| 视频亮度 / 模糊 | 视频壁纸的亮度与柔化 | 50 / 4 px |
-| 壁纸 | 选择图片 / 选择视频 / 删除 | 插件自带的静态图 |
+| 视频亮度 / 模糊 | 视频壁纸的亮度与柔化 | 35 % / 2 px |
+| 壁纸 | 选择图片 / 选择视频 / 删除 | 包内静态图 |
 
 快捷键：`Ctrl + Alt + A` 开关整套皮肤。
 

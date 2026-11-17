@@ -580,9 +580,6 @@ import { createReadStream, statSync } from 'node:fs';
 /** Route the browser half loads the wallpaper video from. */
 export const WALLPAPER_ROUTE = '/aqua/wallpaper.mp4';
 
-/** Fallback used when the loader row carries no config.video. */
-const DEFAULT_VIDEO = ${JSON.stringify('C:/Users/Administrator/Videos/【哲风壁纸】光影-动漫美女-彩色.mp4')};
-
 /** Host plugin name (stable Cordis identity). */
 export const name = 'ui-aqua-wallpaper';
 
@@ -641,10 +638,14 @@ function createHandler(file) {
 /**
  * Register the wallpaper route for the life of the plugin.
  * @param ctx - host plugin context carrying the web server.
- * @param config - loader-row config; \`video\` overrides the default file.
+ * @param config - loader-row config; \`video\` is the local file to stream.
  */
 export function apply(ctx, config) {
-  const file = typeof config?.video === 'string' && config.video !== '' ? config.video : DEFAULT_VIDEO;
+  const file = typeof config?.video === 'string' ? config.video.trim() : '';
+  // No local video configured: register nothing. The browser half then falls back
+  // to the bundled still image, so a fresh install never points at someone else's
+  // private file path.
+  if (file === '') return;
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: WALLPAPER_ROUTE,
