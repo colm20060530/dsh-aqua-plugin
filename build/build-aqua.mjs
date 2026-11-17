@@ -567,8 +567,15 @@ copyFileSync('D:\\harnessproject\\aqua\\package-assets\\wallpaper.jpg', join(OUT
 
 // package manifest: same package identity, patched build
 const pkg = JSON.parse(readFileSync(join(SRC, 'package.json'), 'utf8'));
-pkg.version = '1.4.0-dsh0.2.2';
-pkg.description = 'Aqua: glassmorphism skin for the DSH Web surface — improved global glass layer (Harness Desktop overrides inlined for dsh 0.2.x)';
+pkg.version = '1.4.2-dsh0.2.2';
+pkg.description = 'DeepSeek Harness 的玻璃拟态主题：云母布局、可换壁纸/流体背景、总开关、全局玻璃覆盖层';
+pkg.repository = { type: 'git', url: 'git+https://github.com/colm20060530/dsh-aqua-plugin.git' };
+pkg.homepage = 'https://github.com/colm20060530/dsh-aqua-plugin#readme';
+pkg.bugs = { url: 'https://github.com/colm20060530/dsh-aqua-plugin/issues' };
+pkg.author = 'Aqua plugin contributors';
+pkg.keywords = ['deepseek-harness', 'dsh', 'plugin', 'theme', 'glassmorphism', 'aqua', 'wallpaper'];
+delete pkg.devDependencies;
+pkg.scripts = {};
 pkg.files = ['lib/index.js', 'lib/invariant.js', 'lib/client.js', 'lib/types/**/*.d.ts', 'assets/wallpaper.jpg'];
 pkg.exports['./assets/*'] = './assets/*';
 // The compatibility gate reads engines.dsh first and then ignores peer ranges, so a
