@@ -348,6 +348,13 @@ html[data-dsh-aqua][data-dsh-float] [class*="card"] [class*="card"] {
 html[data-dsh-aqua] [data-dsh-aqua-ambient] {
   will-change: opacity;
 }
+/* The scroll-edge fades are 13px strips already masked by a gradient; the blur
+   inside that strip is invisible but costs a full-width backdrop pass each.
+   Keep the gradient, drop the pass. */
+html[data-dsh-aqua] [data-dsh-aqua-fade] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
 /* ============ 12. the trajectory panel gets the same frosted fill ============ */
 /* Its container was filled with --dsh-aqua-glass-card-*, which in dark mode is a
    15% slate wash — over a dimmed wallpaper that reads as plain black. Same recipe
