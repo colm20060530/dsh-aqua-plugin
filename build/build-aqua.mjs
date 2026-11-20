@@ -355,6 +355,21 @@ html[data-dsh-aqua] [data-dsh-aqua-fade] {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
+/* Small controls never show a backdrop: a 24px button, a segmented chip, a
+   theme cube or a native select paints its own translucent fill, and the blur
+   behind it is sub-pixel. Dropping the filter removes a compositing pass per
+   instance while the painted result stays the same. Large surfaces (sidebar,
+   header, composer, bubbles, trajectory, dialogs) keep theirs. */
+html[data-dsh-aqua] [role="dialog"] button,
+html[data-dsh-aqua] [class*="segActive"],
+html[data-dsh-aqua] [class*="toggleOn"],
+html[data-dsh-aqua] [class*="themeCube"],
+html[data-dsh-aqua] button[class*="newSession"],
+html[data-dsh-aqua] [data-composer-card] button[class*="add"],
+html[data-dsh-aqua] select {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
 /* ============ 12. the trajectory panel gets the same frosted fill ============ */
 /* Its container was filled with --dsh-aqua-glass-card-*, which in dark mode is a
    15% slate wash — over a dimmed wallpaper that reads as plain black. Same recipe
