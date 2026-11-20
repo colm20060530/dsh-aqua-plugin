@@ -264,6 +264,41 @@ html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"][ari
 html[data-dsh-aqua] body[data-ds-dark-theme] {
   --dsh-aqua-glass-card-dark: color-mix(in srgb, #8b98b0 calc(14% + 10% * var(--dsh-aqua-frost, 1)), transparent);
 }
+/* ============ 10. popup panels get their own, legible blur ============ */
+/* Menus, popovers and the slash-command list are small and sit on top of body
+   text. Reusing the glass knobs made them so transparent that the conversation
+   behind showed through, so labels looked doubled and unreadable. They now have
+   their own radius and a near-opaque fill. */
+html[data-dsh-aqua] {
+  --dsh-aqua-panel-blur: calc(var(--dsh-aqua-blur, 12px) + 10px);
+}
+html[data-dsh-aqua][data-dsh-float] [role="menu"],
+html[data-dsh-aqua][data-dsh-float] [role="listbox"],
+html[data-dsh-aqua][data-dsh-float] [class*="popover"],
+html[data-dsh-aqua][data-dsh-float] [class*="dropdown"],
+html[data-dsh-aqua][data-dsh-float] [class*="menuList"],
+html[data-dsh-aqua][data-dsh-float] [data-dsh-surface] {
+  background: color-mix(in srgb, #ffffff 90%, transparent) !important;
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
+  backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
+  border: 1px solid color-mix(in srgb, #132d53 20%, transparent) !important;
+  box-shadow: 0 12px 34px color-mix(in srgb, #132d53 26%, transparent) !important;
+}
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="menu"],
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="listbox"],
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="popover"],
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="dropdown"],
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="menuList"],
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [data-dsh-surface] {
+  background: color-mix(in srgb, #131a24 94%, transparent) !important;
+  border-color: color-mix(in srgb, #94b4dc 24%, transparent) !important;
+  box-shadow: 0 12px 34px color-mix(in srgb, #02060e 62%, transparent) !important;
+}
+/* A menu label must not inherit a translucent hover plate that erases it. */
+html[data-dsh-aqua][data-dsh-float] [role="menu"] [role="menuitem"]:hover,
+html[data-dsh-aqua][data-dsh-float] [role="listbox"] [role="option"]:hover {
+  background: color-mix(in srgb, #6e9be8 18%, transparent);
+}
 `;
 overridesCss = overridesCss + perfCss;
 overridesCss = overridesCss + frostCss;
@@ -294,14 +329,14 @@ js = replaceOnce(
 );
 
 // 4g. shipped defaults, as chosen in the running app:
-//     glass blur 12px / frost 19%, video blur 2px / brightness 50, backdrop
-//     brightness 48, and every ambient decoration + hover effect off.
+//     glass blur 3px / frost 6%, video blur 2px / brightness 35, backdrop
+//     brightness 46, and every ambient decoration + hover effect off.
 const DEFAULT_NUMBERS = {
-  'blur: 16,': 'blur: 12,',
-  'frost: 13,': 'frost: 19,',
+  'blur: 16,': 'blur: 3,',
+  'frost: 13,': 'frost: 6,',
   'videoBlur: 14,': 'videoBlur: 2,',
 
-  'bgBrightness: 50,': 'bgBrightness: 48,',
+  'bgBrightness: 50,': 'bgBrightness: 46,',
   'whale: true,': 'whale: false,',
   'critters: true,': 'critters: false,',
   'mesh: true,': 'mesh: false,',
@@ -361,6 +396,102 @@ js = replaceOnce(
   '\t\t\t} catch {\n\t\t\t\treturn "";\n\t\t\t}\n\t\t}\n\t\t/** Persist the wallpaper data URL (quota failures keep it in memory only). */',
   '\t\t\t} catch {\n\t\t\t\treturn DEFAULT_WALLPAPER;\n\t\t\t}\n\t\t}\n\t\t/** Persist the wallpaper data URL (quota failures keep it in memory only). */',
   'readWallpaper failure default',
+);
+
+// 4i. the settings copy carried warning emoji; the rest of the UI has none.
+js = replaceAll(js, '深色壁纸用深色模式⚠️', '深色壁纸用深色模式', 1, 'zh wallpaper hint emoji');
+js = replaceAll(js, '"⚠️视频会自动压暗', '"视频会自动压暗', 1, 'zh video hint emoji');
+js = replaceAll(js, 'dark wallpapers ⚠️', 'dark wallpapers', 1, 'en wallpaper hint emoji');
+js = replaceAll(js, '"⚠️ The video is dimmed', '"The video is dimmed', 1, 'en video hint emoji');
+
+// 4j. settings strings for the reset-to-defaults control.
+const RESET_LOCALE = {
+  zh: [
+    '"aqua.frost": "磨砂度",',
+    '"aqua.frost": "磨砂度",\n\t\t\t"aqua.resetDefaults": "恢复默认",\n\t\t\t"aqua.resetHint": "把上面所有玻璃参数恢复为出厂值",',
+  ],
+  en: [
+    '"aqua.frost": "Frost",',
+    '"aqua.frost": "Frost",\n\t\t\t"aqua.resetDefaults": "Reset defaults",\n\t\t\t"aqua.resetHint": "Restore every glass knob to the shipped values",',
+  ],
+};
+for (const [lang, [from, to]] of Object.entries(RESET_LOCALE)) {
+  js = replaceOnce(js, from, to, `reset strings ${lang}`);
+}
+
+// 4k. the layer can put every knob back to SETTINGS_DEFAULTS. The master switch is
+//     deliberately left alone: resetting the material must not turn the skin off.
+js = replaceOnce(
+  js,
+  '\t\t\t/** Flip the layer: persist, then apply or retract every owned effect. */',
+  '\t\t\t/** Restore every knob to the shipped defaults (the master switch is kept). */\n'
+    + '\t\t\tresetSettings() {\n'
+    + '\t\t\t\tconst d = SETTINGS_DEFAULTS;\n'
+    + '\t\t\t\twriteMode(d.mode);\n'
+    + '\t\t\t\twriteBackground(d.background);\n'
+    + '\t\t\t\twriteWallpaper(d.wallpaper);\n'
+    + '\t\t\t\twriteWhale(d.whale);\n'
+    + '\t\t\t\twriteCritters(d.critters);\n'
+    + '\t\t\t\twriteMesh(d.mesh);\n'
+    + '\t\t\t\twriteSpotlight(d.spotlight);\n'
+    + '\t\t\t\twritePress(d.press);\n'
+    + '\t\t\t\tfor (const key of Object.keys(NUMERIC_KEYS)) writeSetting(key, d[key]);\n'
+    + '\t\t\t\tthis.reloadSettings();\n'
+    + '\t\t\t\tthis.dark = this.resolveScheme();\n'
+    + '\t\t\t\tif (this.enabled) this.sync();\n'
+    + '\t\t\t}\n'
+    + '\t\t\t/** Flip the layer: persist, then apply or retract every owned effect. */',
+  'resetSettings method',
+);
+
+// 4l. expose reset through the row's injected actions.
+js = replaceOnce(
+  js,
+  '\t\t\tconst appearanceInjected = (actions) => {\n\t\t\t\tappearanceBound = actions;\n\t\t\t\tsync();\n\t\t\t\treturn {',
+  '\t\t\tconst appearanceInjected = (actions) => {\n\t\t\t\tappearanceBound = actions;\n\t\t\t\tsync();\n\t\t\t\treturn {\n'
+    + '\t\t\t\t\treset: () => {\n'
+    + '\t\t\t\t\t\tlayer.resetSettings();\n'
+    + '\t\t\t\t\t\tsync();\n'
+    + '\t\t\t\t\t},',
+  'reset action',
+);
+
+// 4m. the row: take `reset` out of props and render a reset bar above the controls.
+js = replaceOnce(
+  js,
+  'authorizeVideo, useStore } = props;',
+  'authorizeVideo, useStore, reset } = props;',
+  'row props reset',
+);
+js = replaceOnce(
+  js,
+  '\t\t\tif (!enabled) return null;',
+  '\t\t\tconst resetRow = react.createElement("div", {\n'
+    + '\t\t\t\tclassName: AquaAppearanceRow_module_css_default.subGroup,\n'
+    + '\t\t\t\tstyle: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" },\n'
+    + '\t\t\t},\n'
+    + '\t\t\treact.createElement("span", {\n'
+    + '\t\t\t\tstyle: { color: "var(--dsw-alias-label-tertiary)", fontSize: "12px" },\n'
+    + '\t\t\t}, t("aqua.resetHint")),\n'
+    + '\t\t\treact.createElement("button", {\n'
+    + '\t\t\t\ttype: "button",\n'
+    + '\t\t\t\tonClick: () => reset(),\n'
+    + '\t\t\t\tstyle: {\n'
+    + '\t\t\t\t\tminWidth: "76px", height: "26px", borderRadius: "13px", cursor: "pointer",\n'
+    + '\t\t\t\t\tfontSize: "12px", lineHeight: "1",\n'
+    + '\t\t\t\t\tborder: "1px solid var(--dsw-alias-border-l2)",\n'
+    + '\t\t\t\t\tbackground: "var(--dsw-alias-bg-layer-2)",\n'
+    + '\t\t\t\t\tcolor: "var(--dsw-alias-label-primary)",\n'
+    + '\t\t\t\t},\n'
+    + '\t\t\t}, t("aqua.resetDefaults")));\n'
+    + '\t\t\tif (!enabled) return null;',
+  'reset row element',
+);
+js = replaceOnce(
+  js,
+  '\t\t\t\tclassName: AquaAppearanceRow_module_css_default.group,\n\t\t\t\tchildren: [',
+  '\t\t\t\tclassName: AquaAppearanceRow_module_css_default.group,\n\t\t\t\tchildren: [\n\t\t\t\t\tresetRow,',
+  'reset row first child',
 );
 
 // 5. inline the global-glass supplement next to the plugin's own four stylesheets
