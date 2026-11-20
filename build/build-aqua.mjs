@@ -264,11 +264,11 @@ html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"][ari
 html[data-dsh-aqua] body[data-ds-dark-theme] {
   --dsh-aqua-glass-card-dark: color-mix(in srgb, #8b98b0 calc(14% + 10% * var(--dsh-aqua-frost, 1)), transparent);
 }
-/* ============ 10. popup panels get their own, legible blur ============ */
-/* Menus, popovers and the slash-command list are small and sit on top of body
-   text. Reusing the glass knobs made them so transparent that the conversation
-   behind showed through, so labels looked doubled and unreadable. They now have
-   their own radius and a near-opaque fill. */
+/* ============ 10. floating panels: real glass, same degree as the trajectory panel ============ */
+/* Menus, popovers, the slash-command list and the floating tool-detail dialog float
+   above body text. They keep the glass look — fill and blur both follow the knobs —
+   but sit a step denser than a card, otherwise the conversation behind them shows
+   through and every label reads double. */
 html[data-dsh-aqua] {
   --dsh-aqua-panel-blur: calc(var(--dsh-aqua-blur, 12px) + 10px);
 }
@@ -278,7 +278,7 @@ html[data-dsh-aqua][data-dsh-float] [class*="popover"],
 html[data-dsh-aqua][data-dsh-float] [class*="dropdown"],
 html[data-dsh-aqua][data-dsh-float] [class*="menuList"],
 html[data-dsh-aqua][data-dsh-float] [data-dsh-surface] {
-  background: color-mix(in srgb, #ffffff 90%, transparent) !important;
+  background: color-mix(in srgb, #ffffff calc(66% + 9% * var(--dsh-aqua-frost, 1)), transparent) !important;
   -webkit-backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
   backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
   border: 1px solid color-mix(in srgb, #132d53 20%, transparent) !important;
@@ -290,9 +290,20 @@ html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="popover"],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="dropdown"],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="menuList"],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [data-dsh-surface] {
-  background: color-mix(in srgb, #131a24 94%, transparent) !important;
+  background: color-mix(in srgb, #1a2433 calc(62% + 9% * var(--dsh-aqua-frost, 1)), transparent) !important;
   border-color: color-mix(in srgb, #94b4dc 24%, transparent) !important;
   box-shadow: 0 12px 34px color-mix(in srgb, #02060e 62%, transparent) !important;
+}
+/* Floating detail dialogs (the trajectory tool inspector) carried a fixed
+   blur(50px) and a fixed fill, so neither knob reached them. Same treatment as
+   the trajectory panel: frost drives the fill, the blur knob drives the radius. */
+html[data-dsh-aqua][data-dsh-float] body [role="dialog"]:not([aria-modal="true"]) {
+  background: color-mix(in srgb, #ffffff calc(48% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
+  backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
+}
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"]:not([aria-modal="true"]) {
+  background: color-mix(in srgb, #101925 calc(56% + 9% * var(--dsh-aqua-frost, 1)), transparent) !important;
 }
 /* A menu label must not inherit a translucent hover plate that erases it. */
 html[data-dsh-aqua][data-dsh-float] [role="menu"] [role="menuitem"]:hover,
