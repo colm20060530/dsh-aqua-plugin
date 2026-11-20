@@ -132,7 +132,7 @@ js = replaceOnce(
   '\t\t/** Storage key stamping the schema version the current keys were written under. */\n'
     + '\t\tconst AQUA_SCHEMA_KEY = "dsh.ui-aqua.schema";\n'
     + '\t\t/** Schema shipped with this build; the loader row may pin a different one. */\n'
-    + '\t\tconst AQUA_SCHEMA_VERSION = "3";\n'
+    + '\t\tconst AQUA_SCHEMA_VERSION = "4";\n'
     + '\t\t/**\n'
     + '\t\t* Wipe aqua keys written under an older schema, then stamp the current one.\n'
     + '\t\t* The master switch survives so a disabled skin stays disabled.\n'

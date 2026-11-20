@@ -115,7 +115,7 @@ $block = @"
     - id: ui-aqua
       name: '$plugin'
       config:
-        schema: 3$videoLine
+        schema: 4$videoLine
 "@
 [System.IO.File]::WriteAllText($patchFile, $text.TrimEnd() + $block, (New-Object System.Text.UTF8Encoding $false))
 
