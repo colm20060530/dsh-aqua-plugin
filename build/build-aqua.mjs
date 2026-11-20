@@ -310,6 +310,32 @@ html[data-dsh-aqua][data-dsh-float] [role="menu"] [role="menuitem"]:hover,
 html[data-dsh-aqua][data-dsh-float] [role="listbox"] [role="option"]:hover {
   background: color-mix(in srgb, #6e9be8 18%, transparent);
 }
+/* ============ 11. settings cards are glass too ============ */
+/* The card selectors above are case-sensitive and only matched a lowercase
+   "card" class, so the settings cards (presetCard / agentCard / rowCard …) kept
+   the shell's opaque fill and looked flat next to the rest of the skin. The css
+   i flag matches any casing; grid/list wrappers are excluded so no double fill
+   lands on a layout container. */
+html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="card" i]:not([class*="grid" i]):not([class*="list" i]),
+html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="rowcard" i],
+html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="setupcard" i],
+html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="addcard" i] {
+  background: color-mix(in srgb, #ffffff calc(46% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
+  backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
+  border-color: color-mix(in srgb, #132d53 18%, transparent) !important;
+  box-shadow: inset 0 1px color-mix(in srgb, #ffffff 60%, transparent),
+              0 8px 24px color-mix(in srgb, #132d53 14%, transparent) !important;
+}
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="card" i]:not([class*="grid" i]):not([class*="list" i]),
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="rowcard" i],
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="setupcard" i],
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="addcard" i] {
+  background: color-mix(in srgb, #1a2433 calc(52% + 8% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  border-color: color-mix(in srgb, #94b4dc 20%, transparent) !important;
+  box-shadow: inset 0 1px color-mix(in srgb, #ffffff 10%, transparent),
+              0 8px 24px color-mix(in srgb, #02060e 42%, transparent) !important;
+}
 `;
 overridesCss = overridesCss + perfCss;
 overridesCss = overridesCss + frostCss;
