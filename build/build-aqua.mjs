@@ -693,6 +693,118 @@ js = replaceOnce(
   'switch row registration',
 );
 
+// 5. Seamless wallpaper loop: a paused standby <video> is pre-seeked to 0 just
+//    before the active clip ends, so the loop boundary costs no seek/decoder
+//    restart on the element the user is looking at. Falls back to the old
+//    `loop` behaviour if the standby never becomes ready.
+js = replaceOnce(
+  js,
+  '<img data-dsh-aqua-wallpaper-img alt=\\"\\"><video data-dsh-aqua-wallpaper-video loop playsinline preload=\\"auto\\"></video>',
+  '<img data-dsh-aqua-wallpaper-img alt=\\"\\">'
+    + '<video data-dsh-aqua-wallpaper-video data-dsh-aqua-wallpaper-a loop playsinline preload=\\"auto\\" disablepictureinpicture></video>'
+    + '<video data-dsh-aqua-wallpaper-video data-dsh-aqua-wallpaper-b playsinline preload=\\"auto\\" disablepictureinpicture style=\\"opacity:0\\"></video>',
+  'wallpaper twin video',
+);
+js = replaceOnce(
+  js,
+  '\t\t/** Remove the ambient container wherever it lives. */',
+  '\t\t/**\n'
+    + '\t\t * Hand the loop boundary over to a standby <video> that already decoded its\n'
+    + '\t\t * first frame: seeking/restarting the visible element at the seam is what\n'
+    + '\t\t * made a 4K wallpaper hitch for a second here.\n'
+    + '\t\t */\n'
+    + '\t\tconst startSeamlessWallpaper = () => {\n'
+    + '\t\t\tconst a = document.querySelector("[data-dsh-aqua-wallpaper-a]");\n'
+    + '\t\t\tconst b = document.querySelector("[data-dsh-aqua-wallpaper-b]");\n'
+    + '\t\t\tif (!(a instanceof HTMLVideoElement) || !(b instanceof HTMLVideoElement)) return;\n'
+    + '\t\t\tif (a.dataset.seamless === "1") return;\n'
+    + '\t\t\ta.dataset.seamless = "1";\n'
+    + '\t\t\tlet active = a;\n'
+    + '\t\t\tlet standby = b;\n'
+    + '\t\t\tlet armed = false;\n'
+    + '\t\t\tconst show = (node) => {\n'
+    + '\t\t\t\tnode.style.opacity = "1";\n'
+    + '\t\t\t};\n'
+    + '\t\t\tconst hide = (node) => {\n'
+    + '\t\t\t\tnode.style.opacity = "0";\n'
+    + '\t\t\t};\n'
+    + '\t\t\tconst arm = () => {\n'
+    + '\t\t\t\tif (armed) return;\n'
+    + '\t\t\t\tconst duration = active.duration;\n'
+    + '\t\t\t\tif (!Number.isFinite(duration) || duration <= 0) return;\n'
+    + '\t\t\t\tif (active.currentTime < duration - 0.6) return;\n'
+    + '\t\t\t\tarmed = true;\n'
+    + '\t\t\t\tconst twinSrc = active.getAttribute("src");\n'
+    + '\t\t\t\tif (twinSrc !== null && standby.getAttribute("src") !== twinSrc) standby.setAttribute("src", twinSrc);\n'
+    + '\t\t\t\ttry {\n'
+    + '\t\t\t\t\tstandby.currentTime = 0;\n'
+    + '\t\t\t\t} catch {}\n'
+    + '\t\t\t};\n'
+    + '\t\t\tconst handoff = () => {\n'
+    + '\t\t\t\tif (standby.readyState < 2) {\n'
+    + '\t\t\t\t\t/* standby never buffered: keep the plain loop instead of freezing */\n'
+    + '\t\t\t\t\tactive.loop = true;\n'
+    + '\t\t\t\t\ttry {\n'
+    + '\t\t\t\t\t\tactive.currentTime = 0;\n'
+    + '\t\t\t\t\t} catch {}\n'
+    + '\t\t\t\t\tactive.play().catch(() => {});\n'
+    + '\t\t\t\t\tarmed = false;\n'
+    + '\t\t\t\t\treturn;\n'
+    + '\t\t\t\t}\n'
+    + '\t\t\t\ttry {\n'
+    + '\t\t\t\t\tstandby.currentTime = 0;\n'
+    + '\t\t\t\t} catch {}\n'
+    + '\t\t\t\tstandby.play().catch(() => {});\n'
+    + '\t\t\t\tshow(standby);\n'
+    + '\t\t\t\thide(active);\n'
+    + '\t\t\t\tactive.pause();\n'
+    + '\t\t\t\tconst previous = active;\n'
+    + '\t\t\t\tactive = standby;\n'
+    + '\t\t\t\tstandby = previous;\n'
+    + '\t\t\t\tarmed = false;\n'
+    + '\t\t\t\tqueueMicrotask(() => {\n'
+    + '\t\t\t\t\ttry {\n'
+    + '\t\t\t\t\t\tstandby.currentTime = 0;\n'
+    + '\t\t\t\t\t} catch {}\n'
+    + '\t\t\t\t});\n'
+    + '\t\t\t};\n'
+    + '\t\t\tconst bind = (node) => {\n'
+    + '\t\t\t\tnode.addEventListener("timeupdate", () => {\n'
+    + '\t\t\t\t\tif (node === active) arm();\n'
+    + '\t\t\t\t});\n'
+    + '\t\t\t\tnode.addEventListener("ended", () => {\n'
+    + '\t\t\t\t\tif (node === active) handoff();\n'
+    + '\t\t\t\t});\n'
+    + '\t\t\t};\n'
+    + '\t\t\tbind(a);\n'
+    + '\t\t\tbind(b);\n'
+    + '\t\t\ta.loop = false;\n'
+    + '\t\t\tb.loop = false;\n'
+    + '\t\t};\n'
+    + '\t\t/** Remove the ambient container wherever it lives. */',
+  'seamless wallpaper loop',
+);
+// start the seamless loop once the wallpaper layer exists
+js = replaceOnce(
+  js,
+  '\t\t\t\tensureAmbientScene();\n\t\t\t\tensurePageFades();',
+  '\t\t\t\tensureAmbientScene();\n\t\t\t\tensurePageFades();\n\t\t\t\tstartSeamlessWallpaper();',
+  'seamless wallpaper start',
+);
+// both videos must play; configureWallpaperVideo only knows the first one
+js = replaceOnce(
+  js,
+  '\t\t\tconfigureWallpaperVideo(video) {\n\t\t\t\tvideo.loop = true;',
+  '\t\t\tconfigureWallpaperVideo(video) {\n'
+    + '\t\t\t\tvideo.loop = false;\n'
+    + '\t\t\t\tfor (const twin of document.querySelectorAll("[data-dsh-aqua-wallpaper-video]")) {\n'
+    + '\t\t\t\t\tif (twin === video) continue;\n'
+    + '\t\t\t\t\tconst src = video.getAttribute("src");\n'
+    + '\t\t\t\t\tif (src !== null && twin.getAttribute("src") !== src) twin.setAttribute("src", src);\n'
+    + '\t\t\t\t\tif (!src?.startsWith("blob:")) twin.loop = false;\n'
+    + '\t\t\t\t}',
+  'configureWallpaperVideo twin',
+);
 // 7. CPU: cheaper loops. Cap the shader backing store at 1x DPR, and stop every
 //    animation loop while the window is hidden.
 js = replaceOnce(
@@ -758,12 +870,8 @@ js = replaceOnce(
   '\t\t\t\tif (!visible || document.hidden || now - last < 1e3 / FPS) {',
   'mesh hidden guard',
 );
-js = replaceOnce(
-  js,
-  '<video data-dsh-aqua-wallpaper-video loop playsinline preload=\\"auto\\"></video>',
-  '<video data-dsh-aqua-wallpaper-video loop playsinline preload=\\"auto\\" disablepictureinpicture></video>',
-  'video preload',
-);
+// (the single-video markup is replaced wholesale by the seamless-loop patch above,
+//  which already carries disablepictureinpicture on both elements)
 // pause the wallpaper decoder (and its decode cost) while hidden; re-check the
 // streamed file on the way back so a swapped wallpaper needs no app restart.
 js = replaceOnce(
