@@ -15,6 +15,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, rmSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { createHash } from 'node:crypto';
 
 const SRC = 'D:\\harnessproject\\_aqua\\harness-desktop\\desktop\\resources\\plugins\\@deepseek-ai\\dsh-client-ui-aqua';
 const OVERRIDES = 'D:\\harnessproject\\_aqua\\harness-desktop\\desktop\\resources\\aqua-overrides.css';
@@ -49,6 +50,24 @@ js = replaceAll(js, '_deepseek_ai_dsh_client_runtime_client', '_deepseek_ai_dsh_
 
 // 2. icon fallback: 0.2.x renamed IconCheckOutline16 -> IconCheckOutlineRegular/Medium
 js = replaceAll(js, '_deepseek_ai_dsh_client_ui_primitives.IconCheckOutline16', 'AquaCheckIcon', 6, 'icon references');
+
+// 2b. HMR rematerializes this module, but the <style> tags it injected the first
+//     time are still in the head. The injection guards skip when a tag with the
+//     same id exists, so a rebuilt stylesheet never reached the DOM: JS changes
+//     applied, CSS changes silently did not (sliders and panel fills looked
+//     unchanged after an HMR update). Drop our own tags first so every
+//     materialization installs the current stylesheets.
+js = replaceOnce(
+  js,
+  '\t\tObject.defineProperty(exports, Symbol.toStringTag, { value: "Module" });',
+  '\t\tObject.defineProperty(exports, Symbol.toStringTag, { value: "Module" });\n'
+    + '\t\t/* HMR leaves the previously injected tags in place; remove them so the\n'
+    + '\t\t* current stylesheets below actually reach the document. */\n'
+    + '\t\tif (typeof document !== "undefined") {\n'
+    + '\t\t\tfor (const stale of [...document.querySelectorAll(\'style[data-plugin="@deepseek-ai/dsh-client-ui-aqua"]\')]) stale.remove();\n'
+    + '\t\t}',
+  'stale style tag cleanup',
+);
 js = replaceOnce(
   js,
   '\t\tlet _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");',
@@ -316,7 +335,7 @@ html[data-dsh-aqua][data-dsh-float] [role="listbox"] [role="option"]:hover {
    the shell's opaque fill and looked flat next to the rest of the skin. The css
    i flag matches any casing; grid/list wrappers are excluded so no double fill
    lands on a layout container. */
-html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="card" i]:not([class*="grid" i]):not([class*="list" i]),
+html[data-dsh-aqua][data-dsh-float] [class*="card" i]:not([class*="grid" i]):not([class*="list" i]):not([class*="cards" i]),
 html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="rowcard" i],
 html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="setupcard" i],
 html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="addcard" i] {
@@ -327,7 +346,7 @@ html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="addcard" i] {
   box-shadow: inset 0 1px color-mix(in srgb, #ffffff 60%, transparent),
               0 8px 24px color-mix(in srgb, #132d53 14%, transparent) !important;
 }
-html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="card" i]:not([class*="grid" i]):not([class*="list" i]),
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="card" i]:not([class*="grid" i]):not([class*="list" i]):not([class*="cards" i]),
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="rowcard" i],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="setupcard" i],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="addcard" i] {
@@ -752,6 +771,37 @@ if (process.env.AQUA_DIAG === '1') {
 // brightness: BOTH shipped literals (the settings store and SETTINGS_DEFAULTS that
 // readSetting falls back to) must say 35, or a fresh install still reads 50.
 js = js.replace(/videoBrightness: \d+\b/g, 'videoBrightness: 35');
+
+// 4n. a build stamp the page writes into localStorage, so a stale bundle is
+//     detectable: the running app is current only when dsh.aqua.build equals the
+//     stamp baked into the installed bundle (content hash of the generated
+//     script before the stamp is inserted). The host snapshots plugin bundles
+//     when the app starts, so a rebuild without a restart keeps serving the old
+//     CSS — this makes that visible instead of guessing.
+const BUILD_STAMP = createHash('sha256').update(js).digest('hex').slice(0, 12);
+js = replaceOnce(
+  js,
+  '\t\tfunction apply(ctx, config) {',
+  '\t\tfunction apply(ctx, config) {\n'
+    + '\t\t\ttry {\n'
+    + '\t\t\t\tlocalStorage.setItem("dsh.aqua.build", ' + JSON.stringify(BUILD_STAMP) + ');\n'
+
+    + '\t\t\t} catch {}',
+  'build stamp write',
+);
+
+// 4o. after the layer has mounted (it sets html[data-dsh-aqua]), record whether
+//     the current stylesheet is actually live: only a bundle whose CSS reached
+//     the document resolves this variable.
+js = replaceOnce(
+  js,
+  '\t\t\tconst layer = new AquaLayer(ctx);',
+  '\t\t\tconst layer = new AquaLayer(ctx);\n'
+    + '\t\t\ttry {\n'
+    + '\t\t\t\tlocalStorage.setItem("dsh.aqua.css", getComputedStyle(document.documentElement).getPropertyValue("--dsh-aqua-panel-blur").trim() || "stale");\n'
+    + '\t\t\t} catch {}',
+  'stylesheet probe',
+);
 
 // emit
 // saturate() beside a blur costs an extra colour-matrix pass per glass element;
