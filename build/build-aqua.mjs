@@ -216,18 +216,48 @@ html[data-dsh-aqua] div[role="presentation"] > [class*="mask"] {
 html[data-dsh-aqua][data-dsh-aqua-wallpaper] [data-aqua-critter] {
   display: none !important;
 }
-/* Over a wallpaper the backdrop is a still frame that the wallpaper layer has
-   already blurred; a live backdrop-filter on top of it re-filters the same
-   pixels every frame and reads as the same picture. Keep the tint, drop the
-   filter — this is what removes the per-frame full-screen blur cost. */
-html[data-dsh-aqua][data-dsh-aqua-wallpaper] *,
-html[data-dsh-aqua][data-dsh-aqua-wallpaper] *::before,
-html[data-dsh-aqua][data-dsh-aqua-wallpaper] *::after {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
+/* NOTE: an earlier pass disabled backdrop-filter on EVERY element over a
+   wallpaper ("the wallpaper layer already blurred the pixels"). That killed the
+   glass knobs: 模糊度 writes --dsh-aqua-blur, which only feeds backdrop-filter,
+   so the slider moved and nothing changed. The filter is back on; the budget is
+   paid by the scoped rules above (tiny/numerous elements, dialog chips, scrim). */
+`;
+
+// 5d. the frost knob (磨砂度) has to reach the surfaces that actually cover the
+//     window in wallpaper mode. Those three were hardcoded rgba() values, so the
+//     slider moved without changing anything the user could see.
+const frostCss = `
+/* ============ 8. wallpaper-mode surfaces follow the glass knobs ============ */
+/* Bubbles over a video wallpaper: keep the readability floor, let 磨砂度 move it.
+   The selectors mirror the hardcoded rules above down to the attribute list —
+   with equal specificity the later !important wins, with less it does not. */
+html[data-dsh-aqua][data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media="video"] [class*="bubble"] {
+  background: color-mix(in srgb, #ffffff calc(34% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 12px)) !important;
+  backdrop-filter: blur(var(--dsh-aqua-blur, 12px)) !important;
+}
+html[data-dsh-aqua][data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media="video"] body[data-ds-dark-theme] [class*="bubble"] {
+  background: color-mix(in srgb, #0d1219 calc(42% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
+}
+/* The conversation column is the largest surface on screen. */
+html[data-dsh-aqua][data-dsh-float] [class*="centerCol"] {
+  background: color-mix(in srgb, #0c121b calc(50% + 12% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 12px));
+  backdrop-filter: blur(var(--dsh-aqua-blur, 12px));
+}
+html[data-dsh-aqua][data-dsh-float] body:not([data-ds-dark-theme]) [class*="centerCol"] {
+  background: color-mix(in srgb, #ffffff calc(38% + 12% * var(--dsh-aqua-frost, 1)), transparent) !important;
+}
+/* The settings panel itself — the surface the user looks at while dragging. */
+html[data-dsh-aqua][data-dsh-float] [role="dialog"][aria-modal="true"] {
+  background: color-mix(in srgb, #ffffff calc(30% + 12% * var(--dsh-aqua-frost, 1)), transparent) !important;
+}
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"][aria-modal="true"] {
+  background: color-mix(in srgb, #0f1621 calc(44% + 11% * var(--dsh-aqua-frost, 1)), transparent) !important;
 }
 `;
 overridesCss = overridesCss + perfCss;
+overridesCss = overridesCss + frostCss;
 
 // 4f. the particle whale and the dot mesh are drawn for the fluid board; over a
 //     wallpaper they are near-invisible decoration that still runs two
