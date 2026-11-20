@@ -329,31 +329,17 @@ html[data-dsh-aqua][data-dsh-float] [role="menu"] [role="menuitem"]:hover,
 html[data-dsh-aqua][data-dsh-float] [role="listbox"] [role="option"]:hover {
   background: color-mix(in srgb, #6e9be8 18%, transparent);
 }
-/* ============ 11. settings cards are glass too ============ */
-/* The card selectors above are case-sensitive and only matched a lowercase
-   "card" class, so the settings cards (presetCard / agentCard / rowCard …) kept
-   the shell's opaque fill and looked flat next to the rest of the skin. The css
-   i flag matches any casing; grid/list wrappers are excluded so no double fill
-   lands on a layout container. */
-html[data-dsh-aqua][data-dsh-float] [class*="card" i]:not([class*="grid" i]):not([class*="list" i]):not([class*="cards" i]),
-html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="rowcard" i],
-html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="setupcard" i],
-html[data-dsh-aqua][data-dsh-float] [role="dialog"] [class*="addcard" i] {
-  background: color-mix(in srgb, #ffffff calc(46% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
-  -webkit-backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
-  backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
-  border-color: color-mix(in srgb, #132d53 18%, transparent) !important;
-  box-shadow: inset 0 1px color-mix(in srgb, #ffffff 60%, transparent),
-              0 8px 24px color-mix(in srgb, #132d53 14%, transparent) !important;
-}
-html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="card" i]:not([class*="grid" i]):not([class*="list" i]):not([class*="cards" i]),
-html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="rowcard" i],
-html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="setupcard" i],
-html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="addcard" i] {
-  background: color-mix(in srgb, #9aa8c0 calc(20% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
-  border-color: color-mix(in srgb, #94b4dc 20%, transparent) !important;
-  box-shadow: inset 0 1px color-mix(in srgb, #ffffff 12%, transparent),
-              0 8px 24px color-mix(in srgb, #02060e 42%, transparent) !important;
+/* ============ 11. settings cards: one layer of tint, never stacking ============ */
+/* Card CSS modules are Wsg8iW_card / qgYWUG_card, and their children are
+   _cardTitle / _cardDesc / _cardHead / _cardFoot — every one of them contains
+   the substring "card". The vendored card rule therefore tints each nested
+   element as well, and the page reads as stacked translucent slabs. A card
+   inside a card keeps no fill of its own: only the outermost card is tinted. */
+html[data-dsh-aqua][data-dsh-float] [class*="card"] [class*="card"] {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 /* ============ 12. the trajectory panel gets the same frosted fill ============ */
 /* Its container was filled with --dsh-aqua-glass-card-*, which in dark mode is a
