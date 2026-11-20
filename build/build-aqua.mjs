@@ -237,23 +237,32 @@ html[data-dsh-aqua][data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media
   backdrop-filter: blur(var(--dsh-aqua-blur, 12px)) !important;
 }
 html[data-dsh-aqua][data-dsh-float][data-dsh-aqua-wallpaper][data-dsh-aqua-media="video"] body[data-ds-dark-theme] [class*="bubble"] {
-  background: color-mix(in srgb, #0d1219 calc(42% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  background: color-mix(in srgb, #1a2330 calc(34% + 8% * var(--dsh-aqua-frost, 1)), transparent) !important;
 }
-/* The conversation column is the largest surface on screen. */
+/* The conversation column is the largest surface on screen. It stays a plain
+   tint — no backdrop-filter here: blurring the whole column costs a full-screen
+   pass per frame and only made the video read as flat murk. */
 html[data-dsh-aqua][data-dsh-float] [class*="centerCol"] {
-  background: color-mix(in srgb, #0c121b calc(50% + 12% * var(--dsh-aqua-frost, 1)), transparent) !important;
-  -webkit-backdrop-filter: blur(var(--dsh-aqua-blur, 12px));
-  backdrop-filter: blur(var(--dsh-aqua-blur, 12px));
+  background: color-mix(in srgb, #0d1521 calc(30% + 9% * var(--dsh-aqua-frost, 1)), transparent) !important;
 }
 html[data-dsh-aqua][data-dsh-float] body:not([data-ds-dark-theme]) [class*="centerCol"] {
-  background: color-mix(in srgb, #ffffff calc(38% + 12% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  background: color-mix(in srgb, #ffffff calc(30% + 9% * var(--dsh-aqua-frost, 1)), transparent) !important;
 }
 /* The settings panel itself — the surface the user looks at while dragging. */
 html[data-dsh-aqua][data-dsh-float] [role="dialog"][aria-modal="true"] {
   background: color-mix(in srgb, #ffffff calc(30% + 12% * var(--dsh-aqua-frost, 1)), transparent) !important;
 }
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"][aria-modal="true"] {
-  background: color-mix(in srgb, #0f1621 calc(44% + 11% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  background: color-mix(in srgb, #0f1621 calc(34% + 8% * var(--dsh-aqua-frost, 1)), transparent) !important;
+}
+/* ============ 9. 磨砂度 must not darken the dark theme ============ */
+/* The base bundle ties every dark glass fill to the frost knob
+   (color-mix(#22262f, 50% * frost)): dragging 磨砂度 to the right turned the
+   composer into a near-opaque dark slab, because a *dark* colour at higher
+   opacity is just more darkness. Frost now reads as "more milky", not "more
+   black": the fill is a light slate whose opacity stays in a narrow band. */
+html[data-dsh-aqua] body[data-ds-dark-theme] {
+  --dsh-aqua-glass-card-dark: color-mix(in srgb, #8b98b0 calc(14% + 10% * var(--dsh-aqua-frost, 1)), transparent);
 }
 `;
 overridesCss = overridesCss + perfCss;
