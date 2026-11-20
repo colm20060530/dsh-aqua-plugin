@@ -341,6 +341,13 @@ html[data-dsh-aqua][data-dsh-float] [class*="card"] [class*="card"] {
   backdrop-filter: none !important;
   box-shadow: none !important;
 }
+/* ============ 11b. compositor hints (visual-neutral) ============ */
+/* The ambient wash animates opacity for 9s on a full-viewport layer; promoting
+   it once keeps that animation on the compositor instead of repainting the
+   gradient every frame. Nothing about the rendered picture changes. */
+html[data-dsh-aqua] [data-dsh-aqua-ambient] {
+  will-change: opacity;
+}
 /* ============ 12. the trajectory panel gets the same frosted fill ============ */
 /* Its container was filled with --dsh-aqua-glass-card-*, which in dark mode is a
    15% slate wash — over a dimmed wallpaper that reads as plain black. Same recipe
@@ -379,8 +386,24 @@ js = replaceAll(
 js = replaceOnce(
   js,
   '\t\t\tsetBackground(value) {\n\t\t\t\tif (value === this.settings.background) return;\n\t\t\t\tthis.settings.background = value;\n\t\t\t\twriteBackground(value);\n\t\t\t\tif (this.enabled) this.applySettings();\n\t\t\t}',
-  '\t\t\tsetBackground(value) {\n\t\t\t\tif (value === this.settings.background) return;\n\t\t\t\tthis.settings.background = value;\n\t\t\t\twriteBackground(value);\n\t\t\t\tif (this.enabled) {\n\t\t\t\t\tthis.applySettings();\n\t\t\t\t\tthis.syncWhale();\n\t\t\t\t\tthis.syncMesh();\n\t\t\t\t}\n\t\t\t}',
+  '\t\t\tsetBackground(value) {\n\t\t\t\tif (value === this.settings.background) return;\n\t\t\t\tthis.settings.background = value;\n\t\t\t\twriteBackground(value);\n\t\t\t\tif (this.enabled) {\n\t\t\t\t\tthis.applySettings();\n\t\t\t\t\tthis.syncWhale();\n\t\t\t\t\tthis.syncMesh();\n\t\t\t\t\tthis.syncFluid();\n\t\t\t\t}\n\t\t\t}',
   'setBackground sync',
+);
+// 7b. the fluid board is display:none over a wallpaper; allocating a WebGL
+//     context and its framebuffers for it costs GPU memory and keeps a
+//     compositor surface alive. Only mount it when that board can be seen.
+js = replaceOnce(
+  js,
+  '\t\t\tmountFluid() {\n\t\t\t\tconst mainCanvas = document.querySelector("[data-dsh-aqua-fluid-canvas]");',
+  '\t\t\t/** Mount or drop the fluid shader to match the backdrop in use. */\n'
+    + '\t\t\tsyncFluid() {\n'
+    + '\t\t\t\tif (this.enabled && this.settings.background === "fluid") this.mountFluid();\n'
+    + '\t\t\t\telse this.teardownFluid();\n'
+    + '\t\t\t}\n'
+    + '\t\t\tmountFluid() {\n'
+    + '\t\t\t\tif (this.settings.background !== "fluid") return;\n'
+    + '\t\t\t\tconst mainCanvas = document.querySelector("[data-dsh-aqua-fluid-canvas]");',
+  'fluid mount guard',
 );
 
 // 4g. shipped defaults, as chosen in the running app:
@@ -659,8 +682,47 @@ js = replaceOnce(
 js = replaceOnce(
   js,
   '\t\t\t\traf = requestAnimationFrame(frame);\n\t\t\t\tif (now - previous < step) return;',
-  '\t\t\t\traf = requestAnimationFrame(frame);\n\t\t\t\t// Wallpaper mode hides this canvas (display:none); never shade what nobody sees.\n\t\t\t\tif (document.hidden || canvas.offsetWidth === 0 || now - previous < step) return;',
+  '\t\t\t\t// Over a wallpaper the canvas is display:none. Scheduling a frame only to\n'
+    + '\t\t\t\t// read offsetWidth forced a layout every 16ms for a canvas nobody draws;\n'
+    + '\t\t\t\t// park the loop instead and let the observer below restart it.\n'
+    + '\t\t\t\tif (document.hidden || canvas.offsetWidth === 0) {\n'
+    + '\t\t\t\t\traf = 0;\n'
+    + '\t\t\t\t\treturn;\n'
+    + '\t\t\t\t}\n'
+    + '\t\t\t\traf = requestAnimationFrame(frame);\n'
+    + '\t\t\t\tif (now - previous < step) return;',
   'fluid hidden guard',
+);
+// the parked loop has to come back when the fluid board is shown again
+js = replaceOnce(
+  js,
+  '\t\t\t\tdispose: () => {\n\t\t\t\t\tcancelAnimationFrame(raf);\n\t\t\t\t\twindow.removeEventListener("mousemove", onMouseMove);\n\t\t\t\t}',
+  '\t\t\t\tdispose: () => {\n'
+    + '\t\t\t\t\tcancelAnimationFrame(raf);\n'
+    + '\t\t\t\t\traf = 0;\n'
+    + '\t\t\t\t\tresizeObserver.disconnect();\n'
+    + '\t\t\t\t\tdocument.removeEventListener("visibilitychange", resume);\n'
+    + '\t\t\t\t\twindow.removeEventListener("mousemove", onMouseMove);\n'
+    + '\t\t\t\t}',
+  'fluid loop dispose',
+);
+js = replaceOnce(
+  js,
+  '\t\t\tif (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {\n\t\t\t\tframe(performance.now());\n\t\t\t\tcancelAnimationFrame(raf);\n\t\t\t\treturn handle;\n\t\t\t}\n\t\t\traf = requestAnimationFrame(frame);\n\t\t\treturn handle;',
+  '\t\t\tif (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {\n\t\t\t\tframe(performance.now());\n\t\t\t\tcancelAnimationFrame(raf);\n\t\t\t\treturn handle;\n\t\t\t}\n'
+    + '\t\t\t/** Restart the parked loop (and skip the accumulated time) when shown. */\n'
+    + '\t\t\tconst resume = () => {\n'
+    + '\t\t\t\tif (raf !== 0 || document.hidden) return;\n'
+    + '\t\t\t\tif (canvas.offsetWidth === 0) return;\n'
+    + '\t\t\t\tprevious = 0;\n'
+    + '\t\t\t\traf = requestAnimationFrame(frame);\n'
+    + '\t\t\t};\n'
+    + '\t\t\tconst resizeObserver = new ResizeObserver(resume);\n'
+    + '\t\t\tresizeObserver.observe(canvas);\n'
+    + '\t\t\tdocument.addEventListener("visibilitychange", resume);\n'
+    + '\t\t\traf = requestAnimationFrame(frame);\n'
+    + '\t\t\treturn handle;',
+  'fluid loop resume',
 );
 js = replaceOnce(
   js,
@@ -789,8 +851,33 @@ js = replaceOnce(
   'stylesheet probe',
 );
 
-// emit
-// saturate() beside a blur costs an extra colour-matrix pass per glass element;
+// 4p. the seam stamper re-ran a full-document query on every mutation; a chat
+//     view mutates many times per second while streaming. Coalesce them into one
+//     pass per frame — same stamps, far fewer queries.
+js = replaceOnce(
+  js,
+  '\t\t\tconst observer = new MutationObserver(() => {\n\t\t\t\tstampAll();\n\t\t\t});',
+  '\t\t\tlet stampRaf = 0;\n'
+    + '\t\t\tconst observer = new MutationObserver(() => {\n'
+    + '\t\t\t\tif (stampRaf !== 0) return;\n'
+    + '\t\t\t\tstampRaf = requestAnimationFrame(() => {\n'
+    + '\t\t\t\t\tstampRaf = 0;\n'
+    + '\t\t\t\t\tstampAll();\n'
+    + '\t\t\t\t});\n'
+    + '\t\t\t});',
+  'seam stamper coalescing',
+);
+js = replaceOnce(
+  js,
+  '\t\t\treturn () => {\n\t\t\t\tobserver.disconnect();\n\t\t\t};',
+  '\t\t\treturn () => {\n\t\t\t\tobserver.disconnect();\n'
+    + '\t\t\t\tif (stampRaf !== 0) cancelAnimationFrame(stampRaf);\n'
+    + '\t\t\t\tstampRaf = 0;\n'
+    + '\t\t\t};',
+  'seam stamper dispose',
+);
+
+// emit// saturate() beside a blur costs an extra colour-matrix pass per glass element;
 // every use in this bundle sits inside a backdrop-filter value (verified: 28/28).
 js = js.replace(/ saturate\(\d+%\)/g, '').replace(/saturate\(\d+%\)/g, '');
 if (existsSync(OUT)) rmSync(OUT, { recursive: true, force: true });
