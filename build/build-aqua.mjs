@@ -290,7 +290,7 @@ html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="popover"],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="dropdown"],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [class*="menuList"],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [data-dsh-surface] {
-  background: color-mix(in srgb, #1a2433 calc(62% + 9% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  background: color-mix(in srgb, #9aa8c0 calc(26% + 12% * var(--dsh-aqua-frost, 1)), transparent) !important;
   border-color: color-mix(in srgb, #94b4dc 24%, transparent) !important;
   box-shadow: 0 12px 34px color-mix(in srgb, #02060e 62%, transparent) !important;
 }
@@ -331,10 +331,23 @@ html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [cl
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="rowcard" i],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="setupcard" i],
 html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] [role="dialog"] [class*="addcard" i] {
-  background: color-mix(in srgb, #1a2433 calc(52% + 8% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  background: color-mix(in srgb, #9aa8c0 calc(20% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
   border-color: color-mix(in srgb, #94b4dc 20%, transparent) !important;
-  box-shadow: inset 0 1px color-mix(in srgb, #ffffff 10%, transparent),
+  box-shadow: inset 0 1px color-mix(in srgb, #ffffff 12%, transparent),
               0 8px 24px color-mix(in srgb, #02060e 42%, transparent) !important;
+}
+/* ============ 12. the trajectory panel gets the same frosted fill ============ */
+/* Its container was filled with --dsh-aqua-glass-card-*, which in dark mode is a
+   15% slate wash — over a dimmed wallpaper that reads as plain black. Same recipe
+   as the floating panels keeps the three "no effect" areas consistent. */
+html[data-dsh-aqua][data-dsh-float] div:has(> [data-trajectory-scroll]) {
+  background: color-mix(in srgb, #9aa8c0 calc(16% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
+  -webkit-backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
+  backdrop-filter: blur(var(--dsh-aqua-panel-blur, 20px)) !important;
+  border-color: color-mix(in srgb, #94b4dc 22%, transparent) !important;
+}
+html[data-dsh-aqua][data-dsh-float] body[data-ds-dark-theme] div:has(> [data-trajectory-scroll]) {
+  background: color-mix(in srgb, #9aa8c0 calc(16% + 10% * var(--dsh-aqua-frost, 1)), transparent) !important;
 }
 `;
 overridesCss = overridesCss + perfCss;
